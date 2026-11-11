@@ -1,0 +1,27 @@
+rules:
+  - id: kopikita-sql-taint
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Input dari request mengalir ke argumen query $CUR.execute() tanpa
+      parameterisasi (SQL injection). Pakai placeholder, mis.
+      execute("... WHERE x = ?", (nilai,)), atau kopikita.safe_sql() untuk
+      identifier seperti kolom ORDER BY.
+    metadata:
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      category: security
+      confidence: HIGH
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.get_json(...)
+    pattern-sanitizers:
+      # Sanitizer internal tim: allowlist nama kolom (name, price, category),
+      # nilai lain ditolak dengan ValueError. Lihat api/kopikita/__init__.py.
+      - pattern: kopikita.safe_sql(...)
+    pattern-sinks:
+      # Hanya argumen PERTAMA (teks query) yang menjadi sink, supaya nilai
+      # yang dikirim sebagai parameter execute("... ?", (x,)) tidak ditandai.
+      - patterns:
+          - pattern: $CUR.execute($Q, ...)
+          - focus-metavariable: $Q
