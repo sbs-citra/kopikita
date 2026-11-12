@@ -21,6 +21,18 @@ log = logging.getLogger("kopikita")
 INVOICE_NAME = re.compile(r"invoice-(\d{1,9})\.txt")
 DUMMY_PASSWORD_HASH = kopikita.hash_password(secrets.token_urlsafe(16))
 
+
+def untuk_log(value):
+    """Netralkan input pengguna sebelum masuk log agar tidak bisa memalsukan baris (CWE-117).
+
+    Karakter tak tercetak (termasuk \\r, \\n, \\u2028, \\x85) diganti "?". replace() di akhir
+    redundan secara fungsi, tetapi itulah pola sanitizer yang dikenali CodeQL py/log-injection.
+    """
+    if not isinstance(value, str):
+        value = repr(value)
+    value = "".join(ch if ch.isprintable() else "?" for ch in value[:200])
+    return value.replace("\r", "").replace("\n", "")
+
 app = Flask(__name__)
 app.config.from_object(config)
 
@@ -81,7 +93,7 @@ def login():
     username = data.get("username", "")
     password = data.get("password", "")
     # Password tidak pernah dicatat (aturan 3 CLAUDE.md); cukup username untuk jejak audit.
-    log.info("login attempt %s", username)
+    log.info("login attempt %s", untuk_log(username))
     if not isinstance(username, str) or not isinstance(password, str):
         return jsonify(error="username atau password salah"), 401
     # Query berparameter: input pengguna dikirim sebagai data, bukan bagian dari SQL.
