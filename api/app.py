@@ -6,6 +6,7 @@ Hanya jalankan di laptop atau runner CI milik sendiri.
 import functools
 import logging
 import os
+import re
 import secrets
 
 from flask import Flask, abort, g, jsonify, request
@@ -16,6 +17,8 @@ from db import connect, init_db
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("kopikita")
+
+INVOICE_NAME = re.compile(r"invoice-(\d{1,9})\.txt")
 
 app = Flask(__name__)
 app.config.from_object(config)
@@ -127,8 +130,22 @@ def order_detail(order_id):
 @login_required
 def invoice():
     name = request.args.get("file", "")
-    # RENTAN: path traversal, mis. ?file=../config.py
-    path = os.path.join(app.config["INVOICE_DIR"], name)
+    # Hanya nama berkas polos invoice-<angka>.txt; tolak separator, "..", path absolut.
+    match = INVOICE_NAME.fullmatch(name)
+    if match is None:
+        return jsonify(error="nama berkas invoice tidak valid"), 400
+    # Hanya pemilik pesanan yang boleh membaca invoice-nya (cegah BOLA).
+    owner = get_db().execute(
+        "SELECT 1 FROM orders WHERE id = ? AND user_id = ?",
+        (int(match.group(1)), g.user["id"]),
+    ).fetchone()
+    if owner is None:
+        abort(404)
+    # Lapisan kedua: path hasil normalisasi wajib tetap di dalam INVOICE_DIR.
+    base = os.path.realpath(app.config["INVOICE_DIR"])
+    path = os.path.realpath(os.path.join(base, name))
+    if os.path.commonpath([base, path]) != base or not os.path.isfile(path):
+        abort(404)
     with open(path, encoding="utf-8") as fh:
         return fh.read(), 200, {"Content-Type": "text/plain; charset=utf-8"}
 
