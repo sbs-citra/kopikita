@@ -152,4 +152,6 @@ def invoice():
 
 if __name__ == "__main__":
     init_db(app.config["DATABASE"])
-    app.run(host="0.0.0.0", port=5000, debug=True)  # RENTAN: debugger aktif
+    # Debugger Werkzeug selalu mati (debug=False juga menimpa FLASK_DEBUG=1).
+    # Default hanya localhost; container mengatur KOPIKITA_HOST=0.0.0.0 secara eksplisit.
+    app.run(host=os.environ.get("KOPIKITA_HOST", "127.0.0.1"), port=5000, debug=False)
