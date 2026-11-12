@@ -4,5 +4,6 @@ __pycache__/
 .pytest_cache/
 api/kopikita.db
 logs/
+.claude/logs/
 node_modules/
 sbom.json
