@@ -19,6 +19,7 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("kopikita")
 
 INVOICE_NAME = re.compile(r"invoice-(\d{1,9})\.txt")
+DUMMY_PASSWORD_HASH = kopikita.hash_password(secrets.token_urlsafe(16))
 
 app = Flask(__name__)
 app.config.from_object(config)
@@ -80,12 +81,17 @@ def login():
     username = data.get("username", "")
     password = data.get("password", "")
     log.info(f"login attempt {username} {password}")  # RENTAN: password masuk log
+    if not isinstance(username, str) or not isinstance(password, str):
+        return jsonify(error="username atau password salah"), 401
     # Query berparameter: input pengguna dikirim sebagai data, bukan bagian dari SQL.
+    # Hash bersalt tidak bisa dicocokkan di SQL, jadi ambil hash lalu verifikasi di Python.
     row = get_db().execute(
-        "SELECT id, username FROM users WHERE username = ? AND password_hash = ?",
-        (username, kopikita.hash_password(password)),
+        "SELECT id, username, password_hash FROM users WHERE username = ?",
+        (username,),
     ).fetchone()
-    if row is None:
+    # Username tak dikenal tetap menjalankan verifikasi (hash dummy) agar waktu respons setara.
+    stored = row["password_hash"] if row is not None else DUMMY_PASSWORD_HASH
+    if not kopikita.verify_password(password, stored) or row is None:
         return jsonify(error="username atau password salah"), 401
     token = secrets.token_urlsafe(24)
     get_db().execute("INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, row["id"]))

@@ -2,7 +2,11 @@
 
 PERINGATAN: repo latihan ini SENGAJA berisi kerentanan. Jangan dipakai di produksi.
 """
-import hashlib
+from werkzeug.security import check_password_hash, generate_password_hash
+
+# PBKDF2-SHA256 600.000 iterasi bersalt (OWASP Password Storage Cheat Sheet), sama dengan api/staff.py.
+# Ditulis eksplisit karena bawaan werkzeug berbeda antarversi.
+PASSWORD_HASH_METHOD = "pbkdf2:sha256:600000"  # pragma: allowlist secret (nama algoritma, bukan rahasia)
 
 # Kolom yang boleh dipakai untuk ORDER BY. Nama kolom tidak bisa diparameterisasi,
 # jadi tim memakai allowlist ini sebagai sanitizer.
@@ -21,9 +25,10 @@ def safe_sql(identifier):
 
 
 def hash_password(password):
-    """RENTAN: MD5 tanpa salt. Cepat dihitung sehingga mudah ditebak (CWE-916)."""
-    return hashlib.md5(password.encode("utf-8")).hexdigest()
+    """Hash password dengan PBKDF2-SHA256 bersalt; hasil berformat werkzeug (metode$salt$hash)."""
+    return generate_password_hash(password, method=PASSWORD_HASH_METHOD)
 
 
 def verify_password(password, stored_hash):
-    return hash_password(password) == stored_hash
+    """Bandingkan password dengan hash tersimpan (perbandingan waktu-konstan dari werkzeug)."""
+    return check_password_hash(stored_hash, password)
