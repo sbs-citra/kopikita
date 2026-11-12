@@ -142,9 +142,12 @@ def invoice():
     if owner is None:
         abort(404)
     # Lapisan kedua: path hasil normalisasi wajib tetap di dalam INVOICE_DIR.
+    # (realpath + startswith adalah pola guard yang dikenali CodeQL.)
     base = os.path.realpath(app.config["INVOICE_DIR"])
     path = os.path.realpath(os.path.join(base, name))
-    if os.path.commonpath([base, path]) != base or not os.path.isfile(path):
+    if not path.startswith(base + os.sep):
+        abort(404)
+    if not os.path.isfile(path):
         abort(404)
     with open(path, encoding="utf-8") as fh:
         return fh.read(), 200, {"Content-Type": "text/plain; charset=utf-8"}
