@@ -20,6 +20,9 @@ log = logging.getLogger("kopikita")
 app = Flask(__name__)
 app.config.from_object(config)
 
+import staff
+staff.register(app)
+
 
 def get_db():
     if "db" not in g:
