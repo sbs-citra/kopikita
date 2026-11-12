@@ -80,7 +80,8 @@ def login():
     data = request.get_json(silent=True) or {}
     username = data.get("username", "")
     password = data.get("password", "")
-    log.info(f"login attempt {username} {password}")  # RENTAN: password masuk log
+    # Password tidak pernah dicatat (aturan 3 CLAUDE.md); cukup username untuk jejak audit.
+    log.info("login attempt %s", username)
     if not isinstance(username, str) or not isinstance(password, str):
         return jsonify(error="username atau password salah"), 401
     # Query berparameter: input pengguna dikirim sebagai data, bukan bagian dari SQL.
