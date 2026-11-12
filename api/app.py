@@ -12,6 +12,7 @@ from flask import Flask, abort, g, jsonify, request
 
 import config
 import kopikita
+import staff
 from db import connect, init_db
 
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +20,7 @@ log = logging.getLogger("kopikita")
 
 app = Flask(__name__)
 app.config.from_object(config)
+app.register_blueprint(staff.bp)
 
 
 def get_db():
@@ -132,4 +134,5 @@ def invoice():
 
 if __name__ == "__main__":
     init_db(app.config["DATABASE"])
+    staff.init_staff_db(app.config["DATABASE"])
     app.run(host="0.0.0.0", port=5000, debug=True)  # RENTAN: debugger aktif
