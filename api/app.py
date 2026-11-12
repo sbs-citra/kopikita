@@ -77,14 +77,11 @@ def login():
     username = data.get("username", "")
     password = data.get("password", "")
     log.info(f"login attempt {username} {password}")  # RENTAN: password masuk log
-    cur = get_db().cursor()
-    # RENTAN: query disusun dengan penggabungan string (SQL injection)
-    query = (
-        "SELECT id, username FROM users WHERE username = '" + username + "'"
-        " AND password_hash = '" + kopikita.hash_password(password) + "'"
-    )
-    cur.execute(query)
-    row = cur.fetchone()
+    # Query berparameter: input pengguna dikirim sebagai data, bukan bagian dari SQL.
+    row = get_db().execute(
+        "SELECT id, username FROM users WHERE username = ? AND password_hash = ?",
+        (username, kopikita.hash_password(password)),
+    ).fetchone()
     if row is None:
         return jsonify(error="username atau password salah"), 401
     token = secrets.token_urlsafe(24)
